@@ -1,0 +1,54 @@
+name: GitHub Actions Docker Buildx
+
+on:
+ workflow_dispatch:
+ push:
+  branches:
+   - 'master'
+  tags: [ '*' ]
+
+jobs:
+  Docker-Buildx:
+    runs-on: ubuntu-latest
+    env:
+      SWR_REGION: ${{secrets.SWR_REGION}}
+      SWR_ORG: ${{secrets.SWR_ORG}}
+      SWR_AK: ${{secrets.SWR_AK}}
+      SWR_SK: ${{secrets.SWR_SK}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: 添加 Build 环境变量
+        run: |
+          echo "BUILD_IMAGE=swr.${SWR_REGION}.myhuaweicloud.com/${SWR_ORG}/nginx-proxy-manager" >> $GITHUB_ENV
+          echo "BUILD_PLATFORM=linux/amd64,linux/arm64" >> $GITHUB_ENV
+
+      - name: 为标签推送设置 BUILD_TAG
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        run: |
+          echo "BUILD_TAG=-t ${{ env.BUILD_IMAGE }}:${{ github.ref_name }} -t ${{ env.BUILD_IMAGE }}:latest" >> $GITHUB_ENV
+          echo "检测到带标签推送，标签：${{ github.ref_name }}。"
+
+      - name: 为无标签推送设置 BUILD_TAG
+        if: github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'master'
+        run: |
+          echo "BUILD_TAG=-t ${{ env.BUILD_IMAGE }}:dev" >> $GITHUB_ENV
+          echo "检测到无标签推送。"
+
+      - name: 登录 SWR
+        run: docker login -u ${SWR_REGION}@${SWR_AK} -p ${SWR_SK} swr.${SWR_REGION}.myhuaweicloud.com
+
+      - name: 设置 Buildx
+        uses: docker/setup-buildx-action@v2.5.0
+
+      - name: 输出 Buildx 环境变量
+        run: |
+          echo "BUILD_TAG=$BUILD_TAG"
+          echo "BUILD_IMAGE=$BUILD_IMAGE"
+          echo "BUILD_PLATFORM=$BUILD_PLATFORM"
+
+      - name: Buildx Dockerfile
+        run: |
+          chmod -R 755 scripts
+          ./scripts/buildx
