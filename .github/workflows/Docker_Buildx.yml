@@ -1,11 +1,11 @@
 name: GitHub Actions Docker Buildx
 
 on:
- workflow_dispatch:
- push:
-  branches:
-   - 'master'
-  tags: [ '*' ]
+  workflow_dispatch:
+  push:
+    branches:
+      - 'master'
+    tags: [ '*' ]
 
 jobs:
   Docker-Buildx:
@@ -36,7 +36,13 @@ jobs:
           echo "BUILD_TAG=-t ${{ env.BUILD_IMAGE }}:dev" >> $GITHUB_ENV
           echo "检测到无标签推送。"
 
-      - name: 登录 SWR
+      - name: 为事件触发器设置 BUILD_TAG
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "BUILD_TAG=-t ${{ env.BUILD_IMAGE }}:dev" >> $GITHUB_ENV
+          echo "检测到事件触发器。"
+
+      - name: 登录华为 SWR
         run: docker login -u ${SWR_REGION}@${SWR_AK} -p ${SWR_SK} swr.${SWR_REGION}.myhuaweicloud.com
 
       - name: 设置 Buildx
