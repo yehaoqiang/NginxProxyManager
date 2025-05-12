@@ -21,7 +21,7 @@ jobs:
 
       - name: 添加 Build 环境变量
         run: |
-          echo "BUILD_IMAGE=swr.${SWR_REGION}.myhuaweicloud.com/${SWR_ORG}/nginx-proxy-manager" >> $GITHUB_ENV
+          echo "BUILD_IMAGE=nginx-proxy-manager" >> $GITHUB_ENV
           echo "BUILD_PLATFORM=linux/amd64,linux/arm64" >> $GITHUB_ENV
 
       - name: 为标签推送设置 BUILD_TAG
