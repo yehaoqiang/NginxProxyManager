@@ -12,7 +12,6 @@ ARG BUILD_VERSION
 ARG BUILD_COMMIT
 ARG BUILD_DATE
 
-# See: https://github.com/just-containers/s6-overlay/blob/master/README.md
 ENV SUPPRESS_NO_CONFIG_WARNING=1 \
 	S6_BEHAVIOUR_IF_STAGE2_FAILS=1 \
 	S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0 \
@@ -23,6 +22,7 @@ ENV SUPPRESS_NO_CONFIG_WARNING=1 \
 	NPM_BUILD_VERSION="${BUILD_VERSION}" \
 	NPM_BUILD_COMMIT="${BUILD_COMMIT}" \
 	NPM_BUILD_DATE="${BUILD_DATE}" \
+	NPM_LANGUAGE="zh" \
 	NODE_OPTIONS="--openssl-legacy-provider"
 
 RUN echo "fs.file-max = 65535" > /etc/sysctl.conf \
@@ -45,19 +45,30 @@ WORKDIR /app
 RUN yarn install \
 	&& yarn cache clean
 
-# add late to limit cache-busting by modifications
 COPY docker/rootfs /
 COPY --from=pebbleca /test/certs/pebble.minica.pem /etc/ssl/certs/pebble.minica.pem
 COPY --from=testca /home/step/certs/root_ca.crt /etc/ssl/certs/NginxProxyManager.crt
 
-# Remove frontend service not required for prod, dev nginx config as well
+COPY dnspod/client.py /tmp/client.py
+
 RUN rm -rf /etc/s6-overlay/s6-rc.d/user/contents.d/frontend /etc/nginx/conf.d/dev.conf \
 	&& chmod 644 /etc/logrotate.d/nginx-proxy-manager
+
+RUN pip config set global.index-url https://mirrors.huaweicloud.com/repository/pypi/simple && \
+	pip install --no-cache-dir certbot-dns-dnspod && \
+	pip install --no-cache-dir zope
+
+RUN PKG_PATH=$(python -c "import os, certbot_dns_dnspod; print(os.path.dirname(certbot_dns_dnspod.__file__))") && \
+    echo "Certbot DNSPod Path is: $PKG_PATH" && \
+    mkdir -p "$PKG_PATH" && \
+    cp /tmp/client.py "$PKG_PATH/client.py" && \
+    rm /tmp/client.py
 
 VOLUME [ "/data" ]
 ENTRYPOINT [ "/init" ]
 
-LABEL org.label-schema.schema-version="1.0" \
+LABEL maintainer="Konveksa" \
+   	org.label-schema.schema-version="1.0" \
 	org.label-schema.license="MIT" \
 	org.label-schema.name="nginx-proxy-manager" \
 	org.label-schema.description="Docker container for managing Nginx proxy hosts with a simple, powerful interface " \

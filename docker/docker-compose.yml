@@ -1,0 +1,30 @@
+version: '3'
+services:
+  app:
+    image: 'swr.cn-north-4.myhuaweicloud.com/tonglo/nginx-proxy-manager:latest'
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '100.125.18.77:81:81'
+      - '443:443'
+    env_file:
+      - stack.env
+    volumes:
+      - data:/data
+      - letsencrypt:/etc/letsencrypt
+    healthcheck:
+      test: ["CMD", "/usr/bin/check-health"]
+      interval: 10s
+      timeout: 3s
+    networks:
+      nginxpm:
+        ipv4_address: 172.18.0.2
+
+networks:
+  nginxpm:
+    external: true
+
+volumes:
+  data:
+  letsencrypt:
