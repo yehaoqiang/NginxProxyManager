@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - 'master'
-    tags: [ '*' ]
 
 jobs:
   Docker-Buildx:
@@ -13,8 +12,8 @@ jobs:
     env:
       SWR_REGION: ${{secrets.SWR_REGION}}
       SWR_ORG: ${{secrets.SWR_ORG}}
-      SWR_AK: ${{secrets.SWR_AK}}
-      SWR_SK: ${{secrets.SWR_SK}}
+      SWR_USERNAME: ${{secrets.SWR_USERNAME}}
+      SWR_PASSWORD: ${{secrets.SWR_PASSWORD}}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -43,7 +42,7 @@ jobs:
           echo "检测到事件触发器。"
 
       - name: 登录华为 SWR
-        run: docker login -u ${SWR_REGION}@${SWR_AK} -p ${SWR_SK} swr.${SWR_REGION}.myhuaweicloud.com
+        run: docker login -u ${SWR_REGION}@${SWR_USERNAME} -p ${SWR_PASSWORD} swr.${SWR_REGION}.myhuaweicloud.com
 
       - name: 设置 Buildx
         uses: docker/setup-buildx-action@v2.5.0
