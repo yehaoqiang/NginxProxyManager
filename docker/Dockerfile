@@ -55,8 +55,8 @@ RUN rm -rf /etc/s6-overlay/s6-rc.d/user/contents.d/frontend /etc/nginx/conf.d/de
 	&& chmod 644 /etc/logrotate.d/nginx-proxy-manager
 
 RUN pip config set global.index-url https://mirrors.huaweicloud.com/repository/pypi/simple && \
-	pip install --no-cache-dir certbot-dns-dnspod && \
-	pip install --no-cache-dir zope
+	pip install --no-cache-dir certbot-dns-dnspod -i https://pypi.org/simple && \
+	pip install --no-cache-dir zope -i https://pypi.org/simple
 
 RUN PKG_PATH=$(python -c "import os, certbot_dns_dnspod; print(os.path.dirname(certbot_dns_dnspod.__file__))") && \
     echo "Certbot DNSPod Path is: $PKG_PATH" && \
