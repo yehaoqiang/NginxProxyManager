@@ -1,16 +1,21 @@
 #!/bin/bash
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-. "$DIR/ci/frontend-build"
+
+if [ -f "$DIR/ci/frontend-build" ]; then
+  echo "Running frontend build..."
+  . "$DIR/ci/frontend-build"
+else
+  echo "WARNING: Frontend build script '$DIR/ci/frontend-build' not found. Skipping."
+fi
 
 cd "${DIR}/../.."
 
-# Buildx Builder
-docker buildx create --name "Buildx-NPM" || echo
-docker buildx use "Buildx-NPM"
+echo "Building Docker image (without pushing)..."
+echo "Using Dockerfile: docker/Dockerfile"
+echo "Tags: $BUILD_TAG"
+echo "Platforms: $BUILD_PLATFORM"
 
-docker buildx build -f docker/Dockerfile $BUILD_TAG --platform $BUILD_PLATFORM . --push
+docker buildx build -f docker/Dockerfile $BUILD_TAG --platform $BUILD_PLATFORM .
 
-docker buildx rm "Buildx-NPM"
-
-echo "已完成多架构构建！"
+echo "Docker image build step completed."

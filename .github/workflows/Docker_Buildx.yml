@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - 'master'
+      - 'develop'
+    tags:
+      - '*.*.*'
 
 jobs:
   Docker-Buildx:
@@ -14,6 +16,7 @@ jobs:
       SWR_ORG: ${{secrets.SWR_ORG}}
       SWR_USERNAME: ${{secrets.SWR_USERNAME}}
       SWR_PASSWORD: ${{secrets.SWR_PASSWORD}}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -22,38 +25,63 @@ jobs:
         run: |
           echo "BUILD_IMAGE=swr.${SWR_REGION}.myhuaweicloud.com/${SWR_ORG}/nginx-proxy-manager" >> $GITHUB_ENV
           echo "BUILD_PLATFORM=linux/amd64,linux/arm64" >> $GITHUB_ENV
+        shell: bash
 
       - name: 为标签推送设置 BUILD_TAG
-        if: github.event_name == 'push' && github.ref_type == 'tag'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         run: |
-          echo "BUILD_TAG=-t ${{ env.BUILD_IMAGE }}:${{ github.ref_name }} -t ${{ env.BUILD_IMAGE }}:latest" >> $GITHUB_ENV
-          echo "检测到带标签推送，标签：${{ github.ref_name }}。"
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "BUILD_TAG=-t ${{ env.BUILD_IMAGE }}:${TAG_NAME} -t ${{ env.BUILD_IMAGE }}:latest" >> $GITHUB_ENV
+          echo "检测到带标签推送，标签：${TAG_NAME}。"
+        shell: bash
 
-      - name: 为无标签推送设置 BUILD_TAG
-        if: github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'master'
+      - name: 为 develop 分支无标签推送设置 BUILD_TAG
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop' && (!startsWith(github.ref, 'refs/tags/'))
         run: |
           echo "BUILD_TAG=-t ${{ env.BUILD_IMAGE }}:dev" >> $GITHUB_ENV
-          echo "检测到无标签推送。"
+          echo "检测到 develop 分支无标签推送。"
+        shell: bash
 
-      - name: 为事件触发器设置 BUILD_TAG
+      - name: 为 workflow_dispatch 事件触发器设置 BUILD_TAG
         if: github.event_name == 'workflow_dispatch'
         run: |
           echo "BUILD_TAG=-t ${{ env.BUILD_IMAGE }}:dev" >> $GITHUB_ENV
-          echo "检测到事件触发器。"
+          echo "检测到 workflow_dispatch 事件触发器。"
+        shell: bash
 
+      - name: 检查 BUILD_TAG 是否已设置
+        if: env.BUILD_TAG == '' || env.BUILD_TAG == null 
+        run: |
+          echo "错误：BUILD_TAG 未能正确设置。请检查触发条件和设置逻辑。"
+          echo "当前事件: ${{ github.event_name }}, Ref: ${{ github.ref }}"
+          exit 1
+        shell: bash
+        
       - name: 登录华为 SWR
-        run: docker login -u ${SWR_REGION}@${SWR_USERNAME} -p ${SWR_PASSWORD} swr.${SWR_REGION}.myhuaweicloud.com
+        run: docker login -u "${SWR_REGION}@${SWR_USERNAME}" -p "${SWR_PASSWORD}" "swr.${SWR_REGION}.myhuaweicloud.com"
+        shell: bash
 
-      - name: 设置 Buildx
+      - name: 设置 Docker Buildx
+        id: buildx # 给这个步骤一个id，方便后续引用
         uses: docker/setup-buildx-action@v2.5.0
 
-      - name: 输出 Buildx 环境变量
+      - name: 输出 Buildx 环境变量 (用于调试)
         run: |
-          echo "BUILD_TAG=$BUILD_TAG"
-          echo "BUILD_IMAGE=$BUILD_IMAGE"
-          echo "BUILD_PLATFORM=$BUILD_PLATFORM"
+          echo "BUILD_TAG=${BUILD_TAG}"
+          echo "BUILD_IMAGE=${BUILD_IMAGE}"
+          echo "BUILD_PLATFORM=${BUILD_PLATFORM}"
+          echo "Builder Name (from setup-buildx-action): ${{ steps.buildx.outputs.name }}"
+          echo "Builder Platforms (from setup-buildx-action): ${{ steps.buildx.outputs.platforms }}"
+        shell: bash
 
-      - name: Buildx Dockerfile
+      - name: 构建 Docker 镜像
         run: |
           chmod -R 755 scripts
           ./scripts/buildx
+        shell: bash
+
+      - name: 推送 Docker 镜像到 SWR
+        run: |
+          echo "Pushing Docker image with tags: $BUILD_TAG"
+          docker buildx build -f docker/Dockerfile $BUILD_TAG --platform $BUILD_PLATFORM . --push --provenance=false
+        shell: bash
