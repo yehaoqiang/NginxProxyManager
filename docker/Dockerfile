@@ -11,7 +11,7 @@ FROM nginxproxymanager/nginx-full:certbot-node AS backend-deps-builder
 ARG BUILD_VERSION
 ARG BUILD_COMMIT
 ARG BUILD_DATE
-ENV NPM_BUILD_VERSION="${BUILD_VERSION}" \
+ENV NPM_BUILD_VERSION="${TAG_NAME}" \
     NPM_BUILD_COMMIT="${BUILD_COMMIT}" \
     NPM_BUILD_DATE="${BUILD_DATE}" \
     NODE_ENV=production
@@ -107,6 +107,5 @@ LABEL maintainer="Konveksa" \
     org.label-schema.license="MIT" \
     org.label-schema.name="nginx-proxy-manager" \
     org.label-schema.description="Docker container for managing Nginx proxy hosts with a simple, powerful interface " \
-    org.label-schema.url="https://github.com/jc21/nginx-proxy-manager" \
-    org.label-schema.vcs-url="https://github.com/jc21/nginx-proxy-manager.git" \
-    org.label-schema.cmd="docker run --rm -ti jc21/nginx-proxy-manager:latest"
+    org.label-schema.url="https://github.com/yehaoqiang/NginxProxyManager" \
+    org.label-schema.vcs-url="https://github.com/yehaoqiang/NginxProxyManager.git" \
